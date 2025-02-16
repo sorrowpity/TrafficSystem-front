@@ -93,3 +93,30 @@ class UserManager:
     def get_user_info(self, username):
         """获取用户的详细信息"""
         return self.users.get(username)
+    
+    def update_password(self, username, old_password, new_password):
+        """
+        修改用户密码
+        :return: (success: bool, message: str)
+        """
+        user = self.users.get(username)
+        
+        # 验证用户是否存在
+        if not user:
+            return False, "用户不存在"
+            
+        # 验证旧密码
+        if user["password"] != old_password:
+            return False, "原密码错误"
+            
+        # 验证新密码有效性
+        if len(new_password) < 6:
+            return False, "密码长度至少需要6位"
+            
+        # 更新密码
+        user["password"] = new_password
+        
+        # 保存修改
+        if self._save_users(self.users):
+            return True, "密码修改成功"
+        return False, "密码保存失败，请检查文件权限"

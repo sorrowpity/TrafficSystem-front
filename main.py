@@ -21,7 +21,7 @@ def main():
                 admin_window.show()
                 app.exec()  # 进入主事件循环，等待管理员窗口关闭
             else:
-                main_window = MyWindow()
+                main_window = MyWindow(username)
                 main_window.show()
                 app.exec()  # 进入主事件循环，等待用户窗口关闭
         else:

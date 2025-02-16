@@ -6,18 +6,25 @@
         "registration_date": "2023-01-01",
         "account": "admin@example.com"
     },
-    "user": {
-        "username": "user",
-        "password": "123456",
-        "role": "user",
-        "registration_date": "2023-02-01",
-        "account": "user@example.com"
-    },
     "asd": {
         "username": "asd",
         "password": "123",
         "role": "user",
         "registration_date": "2025-02-01",
         "account": "asd"
+    },
+    "qwe": {
+        "username": "qwe",
+        "password": "123",
+        "role": "admin",
+        "registration_date": "2025-02-10",
+        "account": "qwe@example.com"
+    },
+    "user": {
+        "username": "user",
+        "password": "123456",
+        "role": "user",
+        "registration_date": "2025-02-16",
+        "account": "user@example.com"
     }
 }

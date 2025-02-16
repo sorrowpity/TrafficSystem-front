@@ -134,23 +134,25 @@ class LoginWindow(QDialog):
         layout = QVBoxLayout(self)
 
         title_label = QLabel("目标检测系统登录")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #333;")
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #333;font-family: 'Microsoft YaHei';")
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setFont(QFont("Arial", 18, QFont.Bold))
         layout.addWidget(title_label)
 
         self.username_label = QLabel("用户名:")
-        self.username_label.setStyleSheet("font-size: 14px;color: #333;")
+        self.username_label.setStyleSheet("font-size: 14px;color: #333;font-family: 'Microsoft YaHei';")
+        self.username_label.setFont(QFont("Arial", 18, QFont.Bold))
         self.username_input = QLineEdit()
-        self.username_input.setStyleSheet("font-size: 14px; padding: 5px;")
+        self.username_input.setStyleSheet("font-size: 14px; padding: 5px;font-family: 'Microsoft YaHei';")
         layout.addWidget(self.username_label)
         layout.addWidget(self.username_input)
 
         self.password_label = QLabel("密码:")
-        self.password_label.setStyleSheet("font-size: 14px;color: #333;")
+        self.password_label.setStyleSheet("font-size: 14px;color: #333;font-family: 'Microsoft YaHei';")
+        self.password_label.setFont(QFont("Arial", 18, QFont.Bold))
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.Password)
-        self.password_input.setStyleSheet("font-size: 14px; padding: 5px;")
+        self.password_input.setStyleSheet("font-size: 14px; padding: 5px;font-family: 'Microsoft YaHei';")
         layout.addWidget(self.password_label)
         layout.addWidget(self.password_input)
 
@@ -170,6 +172,7 @@ class LoginWindow(QDialog):
             QPushButton:pressed {
                 background-color: #004E8C;
             }
+            font-family: 'Microsoft YaHei';
         """)
         self.login_button.clicked.connect(self.handle_login)
         layout.addWidget(self.login_button)
@@ -190,6 +193,7 @@ class LoginWindow(QDialog):
             QPushButton:pressed {
                 background-color: #004E8C;
             }
+            font-family: 'Microsoft YaHei';
         """)
         self.register_button.clicked.connect(self.show_register_dialog)
         layout.addWidget(self.register_button)
