@@ -25,6 +25,7 @@
         "password": "123456",
         "role": "user",
         "registration_date": "2025-02-16",
-        "account": "user@example.com"
+        "account": "user@example.com",
+        "avatar": "avatars\\user.png"
     }
 }

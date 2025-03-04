@@ -93,6 +93,21 @@ class UserManager:
     def get_user_info(self, username):
         """获取用户的详细信息"""
         return self.users.get(username)
+
+
+    def update_avatar(self, username, avatar_path):
+        """更新用户头像路径"""
+        user = self.users.get(username)
+        if user:
+            user["avatar"] = avatar_path
+            self._save_users(self.users)
+            return True
+        return False
+
+    def get_user_avatar(self, username):
+        """获取用户头像路径"""
+        user = self.users.get(username)
+        return user.get("avatar", "default_avatar.png") if user else "default_avatar.png"
     
     def update_password(self, username, old_password, new_password):
         """
