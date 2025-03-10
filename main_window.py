@@ -153,7 +153,8 @@ class AvatarCropDialog(QDialog):
 
 
 class MyWindow(QMainWindow):
-    update_frame_signal = Signal(np.ndarray)  # 新增信号
+    update_original_signal = Signal(np.ndarray)  # 原始视频信号
+    update_detected_signal = Signal(np.ndarray)  # 检测结果信号
 
     def __init__(self,username):
         super().__init__()
@@ -162,6 +163,7 @@ class MyWindow(QMainWindow):
         self.timer = QTimer()
         self.timer1 = QTimer()
         self.cap = None
+        self.cap_ =None
         self.file_path = None
         self.base_name = None
         self.value = 0.5  # 默认置信度阈值
@@ -184,13 +186,15 @@ class MyWindow(QMainWindow):
         # 初始化时加载头像
         self.current_username = username  # 新增当前用户名存储
         self.rtsp_url = ""  # 新增RTSP地址存储
+        self.rtsp_url_ = ""
         # 在MyWindow类中添加以下成员变量：
         self.frame_count = 0
         self.fps = 0.0
         self.last_fps_update = datetime.now()
         self.init_gui()
         self.init_user_panel()
-        self.update_frame_signal.connect(self.update_frame)  # 连接信号到槽函数
+        self.update_original_signal.connect(self.update_original_frame)
+        self.update_detected_signal.connect(self.update_detected_frame)
 
     
 
@@ -893,7 +897,6 @@ class MyWindow(QMainWindow):
     def closeEvent(self, event):
         """重写 closeEvent，在关闭窗口时返回登录界面"""
         event.accept()
-        exit()
 
 
     def save_result(self):
@@ -1256,6 +1259,34 @@ class MyWindow(QMainWindow):
             self.outputField.append(f"保存路径已更新: {folder_path}")
 
 
+
+
+    def update_original_frame(self, frame):
+        """更新原视频界面"""
+        h, w, ch = frame.shape
+        bytes_per_line = ch * w
+        qt_image = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qt_image).scaled(
+            self.oriVideoLabel.size(), 
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.oriVideoLabel.setPixmap(pixmap)
+
+    def update_detected_frame(self, frame):
+        """更新检测结果界面"""
+        h, w, ch = frame.shape
+        bytes_per_line = ch * w
+        qt_image = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qt_image).scaled(
+            self.detectlabel.size(), 
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.detectlabel.setPixmap(pixmap)
+
+
+
     def setup_rtsp_stream(self):
         """设置RTSP网络流"""
         dialog = QDialog(self)
@@ -1263,27 +1294,32 @@ class MyWindow(QMainWindow):
         layout = QFormLayout(dialog)
         
         self.rtsp_input = QLineEdit("rtsp://[用户名]:[密码]@[IP地址]/[路径]")
+        self.rtsp_input_ = QLineEdit("rtsp://[用户名]:[密码]@[IP地址]/[路径]")
         test_btn = QPushButton("测试连接")
         test_btn.clicked.connect(self.test_rtsp_connection)
         
         layout.addRow("RTSP地址:", self.rtsp_input)
+        layout.addRow("RTSP地址:", self.rtsp_input_)
         layout.addRow(test_btn)
         
         btn_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btn_box.accepted.connect(lambda: self.start_rtsp_stream(self.rtsp_input.text()))
+        btn_box.accepted.connect(lambda: self.start_rtsp_stream(self.rtsp_input.text(),self.rtsp_input_.text()))
         btn_box.rejected.connect(dialog.reject)
         
         layout.addRow(btn_box)
         dialog.exec()
 
-    def start_rtsp_stream(self, url):
+    def start_rtsp_stream(self, url, url_):
         """启动RTSP流处理"""
         try:
             if self.cap:
                 self.cap.release()
                 
             self.rtsp_url = url
+            self.rtsp_url_ = url_
             self.cap = cv2.VideoCapture(url)
+            self.cap_ = cv2.VideoCapture(url_)
+            
             
             if not self.cap.isOpened():
                 raise ConnectionError("无法连接RTSP流")
@@ -1292,11 +1328,13 @@ class MyWindow(QMainWindow):
             self.rtsp_thread = threading.Thread(target=self.process_rtsp_stream)
             self.rtsp_thread.daemon = True
             self.rtsp_thread.start()
+
+            # 启动处理线程
+            self.rtsp_thread_ = threading.Thread(target=self.process_rtsp_stream_)
+            self.rtsp_thread_.daemon = True
+            self.rtsp_thread_.start()
             
-            self.outputField.append(f"已连接RTSP流: {url}")
-            self.stopDetectBtn.setEnabled(True)
-            self.start_detect.setEnabled(False)
-            self.saveResultBtn.setEnabled(True)
+            self.outputField.append(f"已连接RTSP流: {url} 和 {url_}")
             
         except Exception as e:
             QMessageBox.critical(self, "连接失败", f"RTSP连接错误: {str(e)}")
@@ -1316,14 +1354,42 @@ class MyWindow(QMainWindow):
                     results = self.model(frame, conf=self.value)
                     rendered = results[0].plot()
                 else:
-                    rendered = frame
-                    
-                # 发送信号更新UI
-                self.update_frame_signal.emit(cv2.cvtColor(rendered, cv2.COLOR_BGR2RGB))
+                    rendered = frame 
+                
+                # 发送原始帧到界面
+                self.update_original_signal.emit(cv2.cvtColor(rendered, cv2.COLOR_BGR2RGB))
+                
                 
             except Exception as e:
                 self.outputField.append(f"RTSP处理错误: {str(e)}")
                 break
+
+    def process_rtsp_stream_(self):
+        """RTSP流处理线程"""
+        while self.cap_.isOpened():
+            try:
+                ret, frame = self.cap_.read()
+                if not ret:
+                    self.outputField.append("RTSP流中断，尝试重连...")
+                    self.cap_ = cv2.VideoCapture(self.rtsp_url_)
+                    continue
+                
+                # 进行目标检测
+                if self.model:
+                    results = self.model(frame, conf=self.value)
+                    rendered = results[0].plot()
+                else:
+                    rendered = frame
+                
+                # 发送原始帧到界面
+                self.update_detected_signal.emit(cv2.cvtColor(rendered, cv2.COLOR_BGR2RGB))
+                
+                
+            except Exception as e:
+                self.outputField.append(f"RTSP处理错误: {str(e)}")
+                break
+
+    
 
     def update_frame(self, frame):
         """更新显示画面"""
@@ -1340,10 +1406,11 @@ class MyWindow(QMainWindow):
     def test_rtsp_connection(self):
         """测试RTSP连接"""
         test_url = self.rtsp_input.text()
-        self.outputField.append(f"正在测试RTSP连接: {test_url}")
+        test_url_ =self.rtsp_input_.text()
+        self.outputField.append(f"正在测试RTSP连接: {test_url,test_url_}")
         
         # 使用线程测试连接
-        test_thread = threading.Thread(target=self.test_rtsp_connection_thread, args=(test_url,))
+        test_thread = threading.Thread(target=self.test_rtsp_connection_thread, args=(test_url,test_url_))
         test_thread.start()
 
 
