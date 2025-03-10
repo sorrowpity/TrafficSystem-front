@@ -153,6 +153,8 @@ class AvatarCropDialog(QDialog):
 
 
 class MyWindow(QMainWindow):
+    update_frame_signal = Signal(np.ndarray)  # 新增信号
+
     def __init__(self,username):
         super().__init__()
         self.model = None
@@ -188,6 +190,9 @@ class MyWindow(QMainWindow):
         self.last_fps_update = datetime.now()
         self.init_gui()
         self.init_user_panel()
+        self.update_frame_signal.connect(self.update_frame)  # 连接信号到槽函数
+
+    
 
 
     def init_gui(self):
@@ -195,8 +200,18 @@ class MyWindow(QMainWindow):
         self.setWindowTitle('目标检测')
         self.setWindowIcon(QIcon("logo.jpg"))
         # self.setStyleSheet("background-color: #F0F0F0;")
-        self.set_background_image('5.png')  # 设置窗口背景图片
+        self.set_background_image('pic/background/p7.png')  # 设置窗口背景图片
 
+
+        self.setStyleSheet("""
+            QToolTip {
+                background-color: white;
+                color: black;
+                border: 1px solid black;
+                padding: 2px;
+                font-size: 12px;
+            }
+        """)
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
@@ -204,10 +219,10 @@ class MyWindow(QMainWindow):
         # 修改标题区域
         title_layout = QHBoxLayout()
         
-        # 标题标签
-        title_label = QLabel("车辆检测系统")
-        title_label.setStyleSheet("font-size: 24px; color: black; font-weight: bold; background-color: transparent;")
-        title_label.setAlignment(Qt.AlignCenter)
+        # # 标题标签
+        # title_label = QLabel("车辆检测系统")
+        # title_label.setStyleSheet("font-size: 24px; color: black; font-weight: bold; background-color: transparent;")
+        # title_label.setAlignment(Qt.AlignCenter)
         
         # 用户头像按钮
         self.avatar_btn = QToolButton()
@@ -216,7 +231,7 @@ class MyWindow(QMainWindow):
         self.avatar_btn.setIconSize(QSize(36, 36))
         self.avatar_btn.setStyleSheet("""
             QToolButton {
-                background-color: white;
+                background-color: #91ACe0;
                 color: black;
                 border: 2px solid gray;
                 border-radius: 20px;
@@ -233,12 +248,12 @@ class MyWindow(QMainWindow):
         
         # 将标题和头像按钮添加到布局中
         title_layout.addStretch()  # 添加左侧伸展器，将标题推到中间
-        title_layout.addWidget(title_label)
+        # title_layout.addWidget(title_label)
         title_layout.addStretch()  # 添加右侧伸展器，确保标题居中
         title_layout.addWidget(self.avatar_btn)  # 头像按钮放在右侧
 
         # 设置标题布局的对齐方式为居中（确保标题标签居中）
-        title_layout.setAlignment(title_label, Qt.AlignCenter)
+        # title_layout.setAlignment(title_label, Qt.AlignCenter)
         title_layout.setAlignment(self.avatar_btn, Qt.AlignRight)
 
         # 将标题布局插入到主布局顶部
@@ -251,14 +266,14 @@ class MyWindow(QMainWindow):
         # 创建原视频显示区域
         self.oriVideoLabel = QLabel(self)
         self.oriVideoLabel.setFixedSize(530, 330)
-        self.oriVideoLabel.setStyleSheet('border: 3px solid black; border-radius: 10px; background-color: #F0F0F0;')
+        self.oriVideoLabel.setStyleSheet('border: 3px solid white; border-radius: 10px;')
         self.oriVideoLabel.setAlignment(Qt.AlignCenter)
         self.oriVideoLabel.setScaledContents(True)  # 设置为True以自动缩放内容
 
         # 创建检测结果显示区域
         self.detectlabel = QLabel(self)
         self.detectlabel.setFixedSize(530, 330)
-        self.detectlabel.setStyleSheet('border: 3px solid black; border-radius: 10px; background-color: #F0F0F0;')
+        self.detectlabel.setStyleSheet('border: 3px solid white; border-radius: 10px;')
         self.detectlabel.setAlignment(Qt.AlignCenter)
         self.detectlabel.setScaledContents(True)  # 设置为True以自动缩放内容
 
@@ -270,7 +285,7 @@ class MyWindow(QMainWindow):
         # 创建检测结果标题
         detectTitleLabel = QLabel("检测结果", self)
         detectTitleLabel.setStyleSheet("font-size: 20px; color: black; font-weight: bold; background-color: transparent;")
-        detectTitleLabel.setAlignment(Qt.AlignLeft)
+        detectTitleLabel.setAlignment(Qt.AlignRight)
 
         # 创建一个垂直布局用于放置标题和显示区域
         oriLayout = QVBoxLayout()
@@ -292,10 +307,11 @@ class MyWindow(QMainWindow):
         self.outputField.setFixedSize(1050, 180)
         self.outputField.setStyleSheet("""
             QTextBrowser {
-                background-color: #CCCCCC;
-                color: #000000;
-                border: 2px solid #CCCCCC;
+                background-color: #91ACe0;
+                color: white;
+                border: 2px solid white;
                 border-radius: 10px;
+                font-size: 17px;  /* 设置字体大小 */
             }
         """)
 
@@ -309,8 +325,8 @@ class MyWindow(QMainWindow):
         self.fps_label.setStyleSheet("""
             QLabel {
                 font-size: 18px;
-                color: #333333;
-                background-color: #CCCCCC;
+                color: white;
+                background-color: #A6C4FC;
                 border-radius: 8px;
                 padding: 10px;
                 margin: 5px;
@@ -323,8 +339,8 @@ class MyWindow(QMainWindow):
         self.obj_count_label.setStyleSheet("""
             QLabel {
                 font-size: 18px;
-                color: #333333;
-                background-color: #CCCCCC;
+                color: white;
+                background-color:  #A6C4FC;
                 border-radius: 8px;
                 padding: 10px;
                 margin: 5px;
@@ -347,79 +363,74 @@ class MyWindow(QMainWindow):
         bottomLayout = QHBoxLayout()
 
         # 文件上传按钮
-        self.openImageBtn = QPushButton('🖼️文件上传')
-        self.openImageBtn.setFixedSize(100, 50)
+        self.openImageBtn = QPushButton()
+        self.openImageBtn.setFixedSize(50, 50)
         self.openImageBtn.setStyleSheet("""
             QPushButton {
-            background-color: #0078D7;
-            color: white;
-            border: 1px solid #005EA6;
-            border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #005EA6;
-            }
-            QPushButton:pressed {
-                background-color: #00448C;
-            }
-            QPushButton:disabled {
-                background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: none;
+                background-color: transparent;
             }
         """)
         self.openImageBtn.clicked.connect(self.upload_file)
+    
+        # 设置按钮图标
+        icon = QIcon("pic/button/upload.png")  # 替换为你的图标文件路径
+        self.openImageBtn.setIcon(icon)
+        self.openImageBtn.setIconSize(self.openImageBtn.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.openImageBtn.setToolTip("🖼️文件上传")
+
         bottomLayout.addWidget(self.openImageBtn)
 
         # 撤销文件上传按钮
-        self.clearImageBtn = QPushButton('🗑️撤销上传')
-        self.clearImageBtn.setFixedSize(100, 50)
+        # 🗑️撤销上传
+        self.clearImageBtn = QPushButton()
+        self.clearImageBtn.setFixedSize(50, 50)
         self.clearImageBtn.setStyleSheet("""
             QPushButton {
-                background-color: #E0E0E0;
-                color: #333333;
-                border: 1px solid #CCCCCC;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #F0F0F0;
-            }
-            QPushButton:pressed {
-                background-color: #D3D3D3;
-            }
-            QPushButton:disabled {
-                background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: none;
+                background-color: transparent;
             }
         """)
         self.clearImageBtn.clicked.connect(self.clear_image)
         self.clearImageBtn.setEnabled(False)
+
+        # 设置按钮图标
+        icon = QIcon("pic/button/undoupload.png")  # 替换为你的图标文件路径
+        self.clearImageBtn.setIcon(icon)
+        self.clearImageBtn.setIconSize(self.clearImageBtn.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.clearImageBtn.setToolTip("🗑️撤销上传")
+
+
         bottomLayout.addWidget(self.clearImageBtn)
 
         # 侧栏展开/收起按钮
+        # ⚙️模型选择
         self.sidebarBtn = QToolButton(self)
-        self.sidebarBtn.setText('⚙️')
         self.sidebarBtn.setFixedSize(50, 50)
         self.sidebarBtn.setStyleSheet("""
             QToolButton {
-                background-color: white;
-                color: #0078D7;
-                border: 1px solid #0078D7;
-                border-radius: 10px;
-            }
-            QToolButton:hover {
-                background-color: #0078D7;
-                color: white;
-            }
-            QToolButton:pressed {
-                background-color: #005EA6;
-                color: white;
-            }
-            QToolButton:disabled {
-                background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: none;
+                background-color: transparent;
             }
         """)
         self.sidebarBtn.clicked.connect(self.toggle_model_selection)
+
+        # 设置按钮图标
+        icon = QIcon("pic/button/setup.png")  # 替换为你的图标文件路径
+        self.sidebarBtn.setIcon(icon)
+        self.sidebarBtn.setIconSize(self.sidebarBtn.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.sidebarBtn.setToolTip("⚙️模型选择")
+
+
         bottomLayout.addWidget(self.sidebarBtn)
 
         main_layout.addLayout(bottomLayout)
@@ -430,7 +441,7 @@ class MyWindow(QMainWindow):
         self.model_selection_panel.move(self.width(), 0)  # 初始位置在窗口右侧外
         self.model_selection_panel.setStyleSheet("""
             QFrame {
-                background-color: white;
+                background-color: #91ACe0;
                 border: 1px solid #CCCCCC;
                 border-radius: 8px;
                 padding: 10px;
@@ -440,12 +451,13 @@ class MyWindow(QMainWindow):
         self.model_selection_panel.setLayout(QVBoxLayout())
 
         # 添加提示语
-        self.tip=QLabel("请选择适配的模型👇")
+        self.tip=QLabel("模型选择👇")
         self.tip.setStyleSheet("""
             QLabel {
                 color: #000000;
+                border: 2px solid #333333;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 16px;
                 padding: 8px;
             }
         """)
@@ -455,7 +467,7 @@ class MyWindow(QMainWindow):
             QRadioButton {
                 background-color: white;
                 color: #333333;
-                border: 1px solid #CCCCCC;
+                border: 2px solid #333333;
                 border-radius: 10px;
                 padding: 8px;
             }
@@ -467,7 +479,7 @@ class MyWindow(QMainWindow):
             }
             QRadioButton:disabled {
                 background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: 1px solid #d3d3d3;
             }
         """)
         self.yolo_radio.setChecked(True)
@@ -476,7 +488,7 @@ class MyWindow(QMainWindow):
             QRadioButton {
                 background-color: white;
                 color: #333333;
-                border: 1px solid #CCCCCC;
+                border: 2px solid #333333;
                 border-radius: 10px;
                 padding: 8px;
             }
@@ -488,7 +500,7 @@ class MyWindow(QMainWindow):
             }
             QRadioButton:disabled {
                 background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: 1px solid #d3d3d3;
             }
         """)
         self.pytorch_radio = QRadioButton("PyTorch")
@@ -496,7 +508,7 @@ class MyWindow(QMainWindow):
             QRadioButton {
                 background-color: white;
                 color: #333333;
-                border: 1px solid #CCCCCC;
+                border: 2px solid #333333;
                 border-radius: 10px;
                 padding: 8px;
             }
@@ -508,7 +520,7 @@ class MyWindow(QMainWindow):
             }
             QRadioButton:disabled {
                 background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: 1px solid #d3d3d3;
             }
         """)
 
@@ -520,87 +532,89 @@ class MyWindow(QMainWindow):
 
 
         # 导入模型按钮
-        self.importModelBtn = QPushButton('📂导入模型')
-        self.importModelBtn.setFixedSize(100, 50)
+        # 📂导入模型
+        self.importModelBtn = QPushButton()
+        self.importModelBtn.setFixedSize(50, 50)
         self.importModelBtn.setStyleSheet("""
             QPushButton {
-                background-color: #0078D7;
-                color: white;
-                border: 2px solid #005EA6;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #005EA6;
-            }
-            QPushButton:pressed {
-                background-color: #00448C;
-            }
-            QPushButton:disabled {
-                background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: none;
+                background-color: transparent;
             }
         """)
         self.importModelBtn.clicked.connect(self.import_model)
+
+        # 设置按钮图标
+        icon = QIcon("pic/button/import.png")  # 替换为你的图标文件路径
+        self.importModelBtn.setIcon(icon)
+        self.importModelBtn.setIconSize(self.importModelBtn.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.importModelBtn.setToolTip("📂导入模型")
+
+
+
+
         bottomLayout.addWidget(self.importModelBtn)
 
 
         # 保存检测结果按钮
-        self.saveResultBtn = QPushButton('💾导出结果')
-        self.saveResultBtn.setFixedSize(100, 50)
+        # 💾导出结果
+        self.saveResultBtn = QPushButton()
+        self.saveResultBtn.setFixedSize(50, 50)
         self.saveResultBtn.setStyleSheet("""
             QPushButton {
-                background-color: #0078D7;
-                color: white;
-                border: 2px solid #005EA6;
-                border-radius: 10px;
+                border: none;
+                background-color: transparent;
             }
-            QPushButton:hover {
-                background-color: #005EA6;
-            }
-            QPushButton:pressed {
-                background-color: #00448C;
-            }
-            QPushButton:disabled {
-                background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
-            }
-            
         """)
         self.saveResultBtn.clicked.connect(self.save_result)
         self.saveResultBtn.setEnabled(False)  # 默认禁用，只有在检测完成后才启用
+
+        # 设置按钮图标
+        icon = QIcon("pic/button/export.png")  # 替换为你的图标文件路径
+        self.saveResultBtn.setIcon(icon)
+        self.saveResultBtn.setIconSize(self.saveResultBtn.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.saveResultBtn.setToolTip("💾导出结果")
+
+
         bottomLayout.addWidget(self.saveResultBtn)
 
         # 保存路径选择按钮
-        self.selectFolderBtn = QPushButton('📂选择保存路径')
-        self.selectFolderBtn.setFixedSize(100, 50)
+        # 📂选择保存路径
+        self.selectFolderBtn = QPushButton()
+        self.selectFolderBtn.setFixedSize(50, 50)
         self.selectFolderBtn.setStyleSheet("""
             QPushButton {
-                background-color: white;
-                color: #0078D7;
-                border: 1px solid #0078D7;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #0078D7;
-                color: white;
-            }
-            QPushButton:pressed {
-                background-color: #005EA6;
-                color: white;
-            }
-            QPushButton:disabled {
-                background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: none;
+                background-color: transparent;
             }
         """)
         self.selectFolderBtn.clicked.connect(self.select_save_folder)
+
+        # 设置按钮图标
+        icon = QIcon("pic/button/save.png")  # 替换为你的图标文件路径
+        self.selectFolderBtn.setIcon(icon)
+        self.selectFolderBtn.setIconSize(self.selectFolderBtn.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.selectFolderBtn.setToolTip("📂选择保存路径")
+
+
+
+
+
         bottomLayout.addWidget(self.selectFolderBtn)
 
         # 置信度阈值滑动条部分
         self.con_label = QLabel('置信度阈值', self)
         self.con_label.setStyleSheet("""
             QLabel {
-                color: #000000;
+                color: white;
             }
         """)
         self.slider = QSlider(Qt.Horizontal, self)
@@ -628,56 +642,59 @@ class MyWindow(QMainWindow):
         self.confudence_slider.setLayout(confidence_layout)
         self.confudence_slider.setEnabled(False)
         bottomLayout.addWidget(self.confudence_slider)
-        self.confudence_slider.setStyleSheet("background-color: #CCCCCC;")
+        self.confudence_slider.setStyleSheet("background-color: #92CEF1;")
 
         # 开始检测按钮
-        self.start_detect = QPushButton('🔍开始检测')
-        self.start_detect.setFixedSize(100, 50)
+        # 🔍开始检测
+        self.start_detect = QPushButton()
+        self.start_detect.setFixedSize(50, 50)
         self.start_detect.setStyleSheet("""
             QPushButton {
-                background-color: #0078D7;
-                color: white;
-                border: 2px solid #005EA6;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #005EA6;
-            }
-            QPushButton:pressed {
-                background-color: #00448C;
-            }
-            QPushButton:disabled {
-                background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: none;
+                background-color: transparent;
             }
         """)
         self.start_detect.clicked.connect(self.show_detect)
         self.start_detect.setEnabled(False)
+
+        # 设置按钮图标
+        icon = QIcon("pic/button/check.png")  # 替换为你的图标文件路径
+        self.start_detect.setIcon(icon)
+        self.start_detect.setIconSize(self.start_detect.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.start_detect.setToolTip("🔍开始检测")
+
+
+
         bottomLayout.addWidget(self.start_detect)
 
         # 停止检测按钮
-        self.stopDetectBtn = QPushButton('🛑停止')
-        self.stopDetectBtn.setFixedSize(100, 50)
+        # 🛑停止
+        self.stopDetectBtn = QPushButton()
+        self.stopDetectBtn.setFixedSize(50, 50)
         self.stopDetectBtn.setStyleSheet("""
             QPushButton {
-                background-color: #E04545;
-                color: white;
-                border: 2px solid #C12C2C;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #C12C2C;
-            }
-            QPushButton:pressed {
-                background-color: #A42121;
-            }
-            QPushButton:disabled {
-                background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: none;
+                background-color: transparent;
             }
         """)
         self.stopDetectBtn.clicked.connect(self.stop_detect)
         self.stopDetectBtn.setEnabled(False)
+
+        # 设置按钮图标
+        icon = QIcon("pic/button/pause.png")  # 替换为你的图标文件路径
+        self.stopDetectBtn.setIcon(icon)
+        self.stopDetectBtn.setIconSize(self.stopDetectBtn.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.stopDetectBtn.setToolTip("🛑停止")
+
+
+
+
         bottomLayout.addWidget(self.stopDetectBtn)
 
         # # 实时视频流按钮
@@ -705,53 +722,52 @@ class MyWindow(QMainWindow):
         # bottomLayout.addWidget(self.startStreamBtn)
 
         #RTSP网络流
-        self.rtsp_action = QPushButton('🌐RTSP网络流')
-        self.rtsp_action.setFixedSize(100, 50)
+        # 🌐RTSP网络流
+        self.rtsp_action = QPushButton()
+        self.rtsp_action.setFixedSize(50, 50)
         self.rtsp_action.setStyleSheet("""
             QPushButton {
-                background-color: #0078D7;
-                color: white;
-                border: 2px solid #005EA6;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #005EA6;
-            }
-            QPushButton:pressed {
-                background-color: #00448C;
-            }
-            QPushButton:disabled {
-                background-color: #d3d3d3;
-                border: 1px solid #CCCCCC;
+                border: none;
+                background-color: transparent;
             }
         """)
         self.rtsp_action.clicked.connect(self.setup_rtsp_stream)
+
+        # 设置按钮图标
+        icon = QIcon("pic/button/rtsp.png")  # 替换为你的图标文件路径
+        self.rtsp_action.setIcon(icon)
+        self.rtsp_action.setIconSize(self.rtsp_action.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.rtsp_action.setToolTip("🌐RTSP网络流")
+
+
+
         bottomLayout.addWidget(self.rtsp_action)
 
         # 返回登录按钮
-        self.returnLoginBtn = QPushButton('🔙返回登录')
-        self.returnLoginBtn.setFixedSize(100, 50)
+        # 🔙返回登录
+        self.returnLoginBtn = QPushButton()
+        self.returnLoginBtn.setFixedSize(50, 50)
         self.returnLoginBtn.setStyleSheet("""
-        QPushButton {
-            background-color: white;
-            color: #0078D7;
-            border: 1px solid #0078D7;
-            border-radius: 10px;
-        }
-        QPushButton:hover {
-            background-color: #0078D7;
-            color: white;
-        }
-        QPushButton:pressed {
-            background-color: #005EA6;
-            color: white;
-        }
-        QPushButton:disabled {
-            background-color: #d3d3d3;
-            border: 1px solid #CCCCCC;
-        }
+            QPushButton {
+                border: none;
+                background-color: transparent;
+            }
         """)
         self.returnLoginBtn.clicked.connect(self.close_user)  # 绑定点击事件
+
+        # 设置按钮图标
+        icon = QIcon("pic/button/return.png")  # 替换为你的图标文件路径
+        self.returnLoginBtn.setIcon(icon)
+        self.returnLoginBtn.setIconSize(self.returnLoginBtn.size())  # 设置图标大小
+
+
+        # 设置鼠标悬停时显示的提示文字
+        self.returnLoginBtn.setToolTip("🔙返回登录")
+
+
         bottomLayout.addWidget(self.returnLoginBtn)  # 将按钮添加到底部布局
 
         main_layout.addLayout(bottomLayout)
@@ -1263,25 +1279,24 @@ class MyWindow(QMainWindow):
     def start_rtsp_stream(self, url):
         """启动RTSP流处理"""
         try:
-            # 释放原有资源
             if self.cap:
                 self.cap.release()
-            
-            # 初始化视频捕获
+                
             self.rtsp_url = url
             self.cap = cv2.VideoCapture(url)
             
             if not self.cap.isOpened():
                 raise ConnectionError("无法连接RTSP流")
-            
+                
             # 启动处理线程
             self.rtsp_thread = threading.Thread(target=self.process_rtsp_stream)
             self.rtsp_thread.daemon = True
             self.rtsp_thread.start()
             
-            # 启动显示定时器
-            self.timer.start(30)
             self.outputField.append(f"已连接RTSP流: {url}")
+            self.stopDetectBtn.setEnabled(True)
+            self.start_detect.setEnabled(False)
+            self.saveResultBtn.setEnabled(True)
             
         except Exception as e:
             QMessageBox.critical(self, "连接失败", f"RTSP连接错误: {str(e)}")
@@ -1293,29 +1308,55 @@ class MyWindow(QMainWindow):
                 ret, frame = self.cap.read()
                 if not ret:
                     self.outputField.append("RTSP流中断，尝试重连...")
-                    self.cap.reopen()  # 自定义重连方法
+                    self.cap = cv2.VideoCapture(self.rtsp_url)
                     continue
                 
                 # 进行目标检测
-                results = self.model(frame, device='0',conf=self.value)
-                rendered = results[0].plot(line_width=self.line_width)
-                
+                if self.model:
+                    results = self.model(frame, conf=self.value)
+                    rendered = results[0].plot()
+                else:
+                    rendered = frame
+                    
                 # 发送信号更新UI
-                self.update_signal.emit(rendered)
+                self.update_frame_signal.emit(cv2.cvtColor(rendered, cv2.COLOR_BGR2RGB))
                 
             except Exception as e:
                 self.outputField.append(f"RTSP处理错误: {str(e)}")
                 break
 
+    def update_frame(self, frame):
+        """更新显示画面"""
+        h, w, ch = frame.shape
+        bytes_per_line = ch * w
+        qt_image = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qt_image).scaled(
+            self.oriVideoLabel.size(), 
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.oriVideoLabel.setPixmap(pixmap)
+
     def test_rtsp_connection(self):
         """测试RTSP连接"""
-        test_cap = cv2.VideoCapture(self.rtsp_input.text())
-        if test_cap.isOpened():
-            QMessageBox.information(self, "连接成功", "RTSP流测试连接成功！")
-            test_cap.release()
-        else:
-            QMessageBox.warning(self, "连接失败", "无法连接指定RTSP地址")
+        test_url = self.rtsp_input.text()
+        self.outputField.append(f"正在测试RTSP连接: {test_url}")
+        
+        # 使用线程测试连接
+        test_thread = threading.Thread(target=self.test_rtsp_connection_thread, args=(test_url,))
+        test_thread.start()
 
+
+    def test_rtsp_connection_thread(self, url):
+        """在单独线程中测试RTSP连接"""
+        cap = cv2.VideoCapture(url)
+        if cap.isOpened():
+            self.outputField.append("RTSP流测试连接成功！")
+            QMessageBox.information(self, "连接成功", "RTSP流测试连接成功！")
+        else:
+            self.outputField.append("无法连接指定RTSP地址")
+            QMessageBox.warning(self, "连接失败", "无法连接指定RTSP地址")
+        cap.release()
 
     def init_user_panel(self):
         """初始化用户管理面板"""
@@ -1323,7 +1364,7 @@ class MyWindow(QMainWindow):
         self.user_panel.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
         self.user_panel.setStyleSheet("""
             QWidget {
-                background-color: #ffffff;
+                background-color: #91ACe0;
                 border: 1px solid #0078D7;
                 border-radius: 8px;
                 padding: 10px;
@@ -1343,7 +1384,7 @@ class MyWindow(QMainWindow):
                 background-color: #005EA6;
             }
             QLabel {
-                color: #000000;
+                color: white;
                 font-weight: bold;
                 font-size: 14px;
                 padding: 8px;

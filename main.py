@@ -8,6 +8,8 @@ from main_window import MyWindow
 def main():
     app = QApplication(sys.argv)
 
+
+
     while True:
         login_window = LoginWindow()
         result = login_window.exec()
